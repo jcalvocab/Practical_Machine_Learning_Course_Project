@@ -1,0 +1,155 @@
+---
+title: "Practical Machine Learning Course Project"
+author: "jcalvocab"
+date: "21/05/2015"
+
+---
+
+#Introduction
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively.  
+One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. 
+They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website [here](http://groupware.les.inf.puc-rio.br/har) (see the section on the Weight Lifting Exercise Dataset).
+The goal is to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants and predict the manner in which they did the exercise. This is the "classe" variable in the training set:
+
+- Exactly according to the specification (Class A)
+- Throwing the elbows to the front (Class B)
+- Lifting the dumbbell only halfway (Class C)
+- Lowering the dumbbell only halfway (Class D)
+- Throwing the hips to the front (Class E).
+
+Class A corresponds to the specified execution of the exercise, while the other 4 classes correspond to common mistakes.
+
+#Methodology
+For reproducibilty, a seed was set, so the results can be reproduced.
+We will preproces the data to clean and remove variables that not add information to our prediction model.
+We will use random forest model to build our prediction model.
+
+For *cross-validation*:
+
+- Use the training set
+- Split it into training/test subsets.
+- Build the model into the training subset (using random forest)
+- Evaluate on test subset
+- Repeat and average the estimated errors
+
+#Load the data
+The training data for this project are available [here.](https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv)
+The test data are available [here.](https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv)
+The data for this project come from [this source](http://groupware.les.inf.puc-rio.br/har)
+
+Download and load the training and test datasets.
+
+```{r cache=TRUE}
+download.file('https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv','pml-training.csv','curl')
+training<-read.csv('pml-training.csv')
+download.file('https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv','pml-testing.csv','curl')
+testing<-read.csv('pml-testing.csv')
+dim(training)
+```
+
+#Preprocesing the data
+Load required libraries and set seed:
+
+```{r}
+#Ses seed for reproducibility
+library(caret)
+set.seed(123)
+
+```
+
+The size of the training dataset is rather large.
+
+```{r}
+dim(training)
+```
+To reduce dimensionality, we delete columns with all missing values:
+
+```{r}
+training<-training[,colSums(is.na(training))==0]
+dim(training)
+```
+
+Clean up variables that have one unique value (i.e. are zero variance predictors) or predictors that are have both of the following characteristics: they have very few unique values relative to the number of samples and the ratio of the frequency of the most common value to the frequency of the second most common value is large.
+
+```{r}
+near0<-nearZeroVar(training,saveMetrics=T)
+head(near0)
+```
+
+```{r}
+training<-training[,near0$nzv==FALSE]
+dim(training)
+```
+Look remaining variables:
+
+```{r}
+names(training)
+```
+Remove those that does not contribute to the model:
+
+```{r}
+training<-training[,-c(1:5)]
+dim(training)
+```
+
+#Partitioning the training set
+
+```{r}
+inTrain<-createDataPartition(training$classe, p=0.75,list=FALSE)
+train_subset<-training[inTrain,]
+test_subset<-training[-inTrain,]
+```
+
+#Look at the data
+Compare the frecuency of each level in the training subset:
+
+```{r}
+par(mar = rep(2, 4))
+plot(train_subset$classe, col="blue", main="classe levels frecuencies", xlab="classe levels", ylab="Frequency")
+```
+
+The frecuenciy of each leves is withing the same order of magnitude.
+
+#Model Training
+We use random forest model to build our prediction model:
+
+```{r cache=TRUE}
+library(randomForest)
+rfModel<-randomForest(classe~.,data=train_subset,method="class")
+```
+
+#Model Testing
+Test results on testing subset:
+
+```{r}
+#Test the results:
+library(randomForest)
+prediction<-predict(rfModel,test_subset)
+cm<-confusionMatrix(prediction,test_subset$classe)
+cm
+```
+#Conclusion
+Accuracy for Random Forest algorithm is `r cm$overall[1]`.
+
+#Prediction on test data set
+
+```{r}
+#Prediction:
+predict_unknow<-predict(rfModel, testing)
+predict_unknow
+```
+
+```{r}
+#code for submission
+pml_write_files = function(x){
+  n = length(x)
+  for(i in 1:n){
+    filename = paste0("problem_id_",i,".txt")
+    write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
+  }
+}
+
+pml_write_files(predict_unknow)
+
+```
+
