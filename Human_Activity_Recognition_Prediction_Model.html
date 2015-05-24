@@ -184,10 +184,8 @@ plot(train_subset$classe, col=&quot;blue&quot;, main=&quot;classe levels frecuen
 <h1>Model Testing</h1>
 <p>Test results on testing subset:</p>
 <pre class="r"><code>#Test the results:
-library(randomForest)</code></pre>
-<pre><code>## randomForest 4.6-10
-## Type rfNews() to see new features/changes/bug fixes.</code></pre>
-<pre class="r"><code>prediction&lt;-predict(rfModel,test_subset)
+library(randomForest)
+prediction&lt;-predict(rfModel,test_subset)
 cm&lt;-confusionMatrix(prediction,test_subset$classe)
 cm</code></pre>
 <pre><code>## Confusion Matrix and Statistics
